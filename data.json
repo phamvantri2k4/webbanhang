@@ -1,0 +1,37 @@
+{
+  "products": [
+    {
+      "name": "Iphone 16 Pro Max",
+      "image": "https://cdn.xtmobile.vn/vnt_upload/news/09_2023/28/hinh-anh-mo-hop-iphone-15-pro-max-titan-tu-nhien-xtmobile.jpg",
+      "price": 34000000,
+      "category": "Điện thoại"
+    },
+    {
+      "name": "Laptop Acer Nitro",
+      "image": "https://m.media-amazon.com/images/I/71gHmAe4zWL._AC_UF894,1000_QL80_.jpg",
+      "price": 25000000,
+      "category": "Laptop"
+    },
+    {
+      "name": "Áo thun",
+      "image": "https://bizweb.dktcdn.net/thumb/1024x1024/100/399/392/products/6-2.png",
+      "price": 200000,
+      "category": "Áo"
+    },
+    {
+      "name": "Tủ lạnh GHI",
+      "image": "https://th.bing.com/th/id/OIP.9XWVzVAp-Gqpg_q_hGzEkQHaE8?rs=1&pid=ImgDetMain",
+      "price": 8000000,
+      "category": "Tủ lạnh"
+    }
+  ],
+  "categories": [
+    "Điện tử",
+    "Thời trang",
+    "Gia dụng",
+    "Điện thoại",
+    "Laptop",
+    "Áo",
+    "Tủ lạnh"
+  ]
+}
