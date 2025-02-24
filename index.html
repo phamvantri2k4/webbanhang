@@ -1139,19 +1139,22 @@
       const GITHUB_TOKEN = "YOUR_GITHUB_PERSONAL_ACCESS_TOKEN"; // Thay bằng token của bạn
       const REPO_OWNER = "YOUR_GITHUB_USERNAME"; // Thay bằng tên người dùng GitHub
       const REPO_NAME = "YOUR_REPOSITORY_NAME"; // Thay bằng tên repository
+      const BRANCH = "main";
+      const DATA_FILE_PATH = "data.json";
 
       document.addEventListener("DOMContentLoaded", () => {
         loadUsers();
         loadCurrentUser();
-        fetchData(); // Tải dữ liệu từ data.json
+        fetchData();
       });
 
       async function fetchData() {
         try {
-          const response = await fetch("data.json");
+          const response = await fetch(DATA_FILE_PATH + "?t=" + new Date().getTime()); // Thêm timestamp để tránh cache
+          if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
           const data = await response.json();
-          products = data.products;
-          categories = data.categories;
+          products = data.products || [];
+          categories = data.categories || [];
           updateCategoryDropdown();
           renderMenu();
           renderProducts();
@@ -1165,35 +1168,55 @@
       async function updateGitHubData() {
         const data = { products, categories };
         const content = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2))));
-        const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/data.json`;
+        const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${DATA_FILE_PATH}`;
 
         try {
-          const response = await fetch(url, {
+          // Lấy thông tin file hiện tại để lấy SHA
+          const getResponse = await fetch(url, {
             method: "GET",
             headers: {
-              Authorization: `token ${GITHUB_TOKEN}`,
+              Authorization: `Bearer ${GITHUB_TOKEN}`,
               Accept: "application/vnd.github.v3+json",
             },
           });
-          const { sha } = await response.json();
 
-          await fetch(url, {
+          let sha;
+          if (getResponse.ok) {
+            const fileData = await getResponse.json();
+            sha = fileData.sha;
+          } else if (getResponse.status === 404) {
+            sha = null; // File chưa tồn tại
+          } else {
+            const errorData = await getResponse.json();
+            throw new Error(`Không thể lấy SHA: ${errorData.message}`);
+          }
+
+          // Cập nhật file data.json
+          const putResponse = await fetch(url, {
             method: "PUT",
             headers: {
-              Authorization: `token ${GITHUB_TOKEN}`,
+              Authorization: `Bearer ${GITHUB_TOKEN}`,
               Accept: "application/vnd.github.v3+json",
             },
             body: JSON.stringify({
-              message: "Cập nhật data.json từ giao diện web",
+              message: `Cập nhật ${DATA_FILE_PATH} từ giao diện web - ${new Date().toISOString()}`,
               content: content,
               sha: sha,
-              branch: "main",
+              branch: BRANCH,
             }),
           });
+
+          if (!putResponse.ok) {
+            const errorData = await putResponse.json();
+            throw new Error(`Cập nhật thất bại: ${errorData.message}`);
+          }
+
+          console.log("Cập nhật data.json thành công!");
           showToast("Dữ liệu đã được cập nhật lên GitHub!");
+          await fetchData(); // Tải lại dữ liệu để xác nhận
         } catch (error) {
           console.error("Lỗi khi cập nhật GitHub:", error);
-          showToast("Lỗi khi cập nhật dữ liệu lên GitHub!");
+          showToast(`Lỗi: ${error.message}`);
         }
       }
 
