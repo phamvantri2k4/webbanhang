@@ -10,6 +10,7 @@
       href="https://th.bing.com/th/id/OIP.b7X0SUxuhRIsOFn47sQDkwHaHa?rs=1&pid=ImgDetMain"
     />
     <style>
+      /* Giữ nguyên CSS của bạn */
       * {
         margin: 0;
         padding: 0;
@@ -1132,50 +1133,69 @@
 
     <script>
       let cart = new Map();
-      let products = [
-        {
-          name: "Iphone 16 Pro Max",
-          image:
-            "https://cdn.xtmobile.vn/vnt_upload/news/09_2023/28/hinh-anh-mo-hop-iphone-15-pro-max-titan-tu-nhien-xtmobile.jpg",
-          price: 34000000,
-          category: "Điện thoại",
-        },
-        {
-          name: "Laptop Acer Nitro",
-          image:
-            "https://m.media-amazon.com/images/I/71gHmAe4zWL._AC_UF894,1000_QL80_.jpg",
-          price: 25000000,
-          category: "Laptop",
-        },
-        {
-          name: "Áo thun",
-          image:
-            "https://bizweb.dktcdn.net/thumb/1024x1024/100/399/392/products/6-2.png",
-          price: 200000,
-          category: "Áo",
-        },
-        {
-          name: "Tủ lạnh GHI",
-          image:
-            "https://th.bing.com/th/id/OIP.9XWVzVAp-Gqpg_q_hGzEkQHaE8?rs=1&pid=ImgDetMain",
-          price: 8000000,
-          category: "Tủ lạnh",
-        },
-      ];
+      let products = [];
       let categories = [];
       let currentUser = null;
+      const GITHUB_TOKEN = "YOUR_GITHUB_PERSONAL_ACCESS_TOKEN"; // Thay bằng token của bạn
+      const REPO_OWNER = "YOUR_GITHUB_USERNAME"; // Thay bằng tên người dùng GitHub
+      const REPO_NAME = "YOUR_REPOSITORY_NAME"; // Thay bằng tên repository
 
       document.addEventListener("DOMContentLoaded", () => {
         loadUsers();
         loadCurrentUser();
-        loadCategories();
-        cleanCategories(); // Xóa danh mục không hợp lệ
-        loadProducts();
-        updateCategoryDropdown();
-        renderMenu();
-        renderProducts();
-        checkLoginStatus();
+        fetchData(); // Tải dữ liệu từ data.json
       });
+
+      async function fetchData() {
+        try {
+          const response = await fetch("data.json");
+          const data = await response.json();
+          products = data.products;
+          categories = data.categories;
+          updateCategoryDropdown();
+          renderMenu();
+          renderProducts();
+          checkLoginStatus();
+        } catch (error) {
+          console.error("Lỗi khi tải dữ liệu:", error);
+          showToast("Không thể tải dữ liệu ban đầu!");
+        }
+      }
+
+      async function updateGitHubData() {
+        const data = { products, categories };
+        const content = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2))));
+        const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/data.json`;
+
+        try {
+          const response = await fetch(url, {
+            method: "GET",
+            headers: {
+              Authorization: `token ${GITHUB_TOKEN}`,
+              Accept: "application/vnd.github.v3+json",
+            },
+          });
+          const { sha } = await response.json();
+
+          await fetch(url, {
+            method: "PUT",
+            headers: {
+              Authorization: `token ${GITHUB_TOKEN}`,
+              Accept: "application/vnd.github.v3+json",
+            },
+            body: JSON.stringify({
+              message: "Cập nhật data.json từ giao diện web",
+              content: content,
+              sha: sha,
+              branch: "main",
+            }),
+          });
+          showToast("Dữ liệu đã được cập nhật lên GitHub!");
+        } catch (error) {
+          console.error("Lỗi khi cập nhật GitHub:", error);
+          showToast("Lỗi khi cập nhật dữ liệu lên GitHub!");
+        }
+      }
 
       function loadUsers() {
         let users = JSON.parse(localStorage.getItem("users")) || [];
@@ -1211,48 +1231,6 @@
         }
       }
 
-      function loadCategories() {
-        const storedCategories = localStorage.getItem("categories");
-        if (storedCategories) {
-          categories = JSON.parse(storedCategories);
-        } else {
-          categories = [
-            "Điện tử",
-            "Thời trang",
-            "Gia dụng",
-            "Điện thoại",
-            "Laptop",
-            "Áo",
-            "Tủ lạnh",
-          ];
-          saveCategories();
-        }
-      }
-
-      function cleanCategories() {
-        // Xóa các danh mục không hợp lệ như [object Object]
-        categories = categories.filter(
-          (category) =>
-            typeof category === "string" &&
-            category !== "[object Object]" &&
-            category.trim() !== ""
-        );
-        saveCategories();
-      }
-
-      function saveCategories() {
-        localStorage.setItem("categories", JSON.stringify(categories));
-      }
-
-      function loadProducts() {
-        const storedProducts = localStorage.getItem("products");
-        if (storedProducts) products = JSON.parse(storedProducts);
-      }
-
-      function saveProducts() {
-        localStorage.setItem("products", JSON.stringify(products));
-      }
-
       function updateCategoryDropdown() {
         const select = document.getElementById("product-category");
         select.innerHTML = '<option value="">Chọn danh mục</option>';
@@ -1264,7 +1242,6 @@
       function renderMenu() {
         const menuList = document.getElementById("menu-list");
         menuList.innerHTML = "";
-
         categories.forEach((category) => {
           const li = document.createElement("li");
           li.innerHTML = `
@@ -1272,7 +1249,6 @@
           `;
           menuList.appendChild(li);
         });
-
         const allLi = document.createElement("li");
         allLi.innerHTML = `<a href="#" onclick="filterCategory(''); return false;">Tất cả</a>`;
         menuList.appendChild(allLi);
@@ -1292,12 +1268,8 @@
             <h3>${product.name}</h3>
             <div class="price">${product.price.toLocaleString()} VNĐ</div>
             <div class="buttons">
-              <button class="buy-btn" onclick="showProductDetail('${
-                product.name
-              }', '${product.image}', ${product.price})">Mua ngay</button>
-              <button class="cart-btn" onclick="addToCart('${product.name}', '${
-            product.image
-          }', ${product.price})">Thêm vào giỏ</button>
+              <button class="buy-btn" onclick="showProductDetail('${product.name}', '${product.image}', ${product.price})">Mua ngay</button>
+              <button class="cart-btn" onclick="addToCart('${product.name}', '${product.image}', ${product.price})">Thêm vào giỏ</button>
             </div>
           `;
           productList.appendChild(div);
@@ -1492,12 +1464,8 @@
               <h3>${product.name}</h3>
               <div class="price">${product.price.toLocaleString()} VNĐ</div>
               <div class="buttons">
-                <button class="buy-btn" onclick="showProductDetail('${
-                  product.name
-                }', '${product.image}', ${product.price})">Mua ngay</button>
-                <button class="cart-btn" onclick="addToCart('${
-                  product.name
-                }', '${product.image}', ${product.price})">Thêm vào giỏ</button>
+                <button class="buy-btn" onclick="showProductDetail('${product.name}', '${product.image}', ${product.price})">Mua ngay</button>
+                <button class="cart-btn" onclick="addToCart('${product.name}', '${product.image}', ${product.price})">Thêm vào giỏ</button>
               </div>
             `;
             productList.appendChild(div);
@@ -1523,12 +1491,8 @@
               <h3>${product.name}</h3>
               <div class="price">${product.price.toLocaleString()} VNĐ</div>
               <div class="buttons">
-                <button class="buy-btn" onclick="showProductDetail('${
-                  product.name
-                }', '${product.image}', ${product.price})">Mua ngay</button>
-                <button class="cart-btn" onclick="addToCart('${
-                  product.name
-                }', '${product.image}', ${product.price})">Thêm vào giỏ</button>
+                <button class="buy-btn" onclick="showProductDetail('${product.name}', '${product.image}', ${product.price})">Mua ngay</button>
+                <button class="cart-btn" onclick="addToCart('${product.name}', '${product.image}', ${product.price})">Thêm vào giỏ</button>
               </div>
             `;
             productList.appendChild(div);
@@ -1729,7 +1693,6 @@
         const preview = document.getElementById("image-preview");
         if (file) {
           if (file.size > 5 * 1024 * 1024) {
-            // Giới hạn 5MB
             showToast("Kích thước ảnh không được vượt quá 5MB!");
             event.target.value = "";
             preview.style.display = "none";
@@ -1746,7 +1709,7 @@
         }
       }
 
-      function addProduct(event) {
+      async function addProduct(event) {
         event.preventDefault();
         if (!currentUser || currentUser.role !== "admin") {
           showToast("Bạn không có quyền thêm sản phẩm!");
@@ -1754,8 +1717,7 @@
         }
         const name = document.getElementById("product-name").value;
         const imageUrl = document.getElementById("product-image-url").value;
-        const imageFile =
-          document.getElementById("product-image-file").files[0];
+        const imageFile = document.getElementById("product-image-file").files[0];
         const price = parseInt(document.getElementById("product-price").value);
         const category = document.getElementById("product-category").value;
 
@@ -1767,10 +1729,11 @@
         let image = imageUrl;
         if (imageFile) {
           const reader = new FileReader();
-          reader.onload = function (e) {
+          reader.onload = async function (e) {
             image = e.target.result;
-            products.push({ name, image, price, category });
-            saveProducts();
+            const newProduct = { name, image, price, category };
+            products.push(newProduct);
+            await updateGitHubData();
             renderAdminProducts();
             renderProducts();
             showToast("Thêm sản phẩm thành công!");
@@ -1779,13 +1742,13 @@
           };
           reader.readAsDataURL(imageFile);
         } else if (imageUrl) {
-          products.push({ name, image, price, category });
-          saveProducts();
+          const newProduct = { name, image, price, category };
+          products.push(newProduct);
+          await updateGitHubData();
           renderAdminProducts();
           renderProducts();
           showToast("Thêm sản phẩm thành công!");
           document.getElementById("add-product-form").reset();
-          document.getElementById("image-preview").style.display = "none";
         } else {
           showToast("Vui lòng cung cấp URL ảnh hoặc chọn file ảnh!");
         }
@@ -1809,7 +1772,7 @@
         });
       }
 
-      function editProduct(name) {
+      async function editProduct(name) {
         if (!currentUser || currentUser.role !== "admin") {
           showToast("Bạn không có quyền sửa sản phẩm!");
           return;
@@ -1821,32 +1784,36 @@
         const newCategory = prompt("Nhập danh mục mới:", product.category);
 
         if (newName && newImage && newPrice && newCategory) {
-          product.name = newName;
-          product.image = newImage;
-          product.price = parseInt(newPrice);
-          product.category = newCategory;
-          saveProducts();
+          const updatedProduct = {
+            name: newName,
+            image: newImage,
+            price: parseInt(newPrice),
+            category: newCategory,
+          };
+          const productIndex = products.findIndex((p) => p.name === name);
+          products[productIndex] = updatedProduct;
+          await updateGitHubData();
           renderAdminProducts();
           renderProducts();
           showToast("Sửa sản phẩm thành công!");
         }
       }
 
-      function deleteProduct(name) {
+      async function deleteProduct(name) {
         if (!currentUser || currentUser.role !== "admin") {
           showToast("Bạn không có quyền xóa sản phẩm!");
           return;
         }
         if (confirm("Bạn có chắc muốn xóa sản phẩm này?")) {
           products = products.filter((p) => p.name !== name);
-          saveProducts();
+          await updateGitHubData();
           renderAdminProducts();
           renderProducts();
           showToast("Xóa sản phẩm thành công!");
         }
       }
 
-      function addCategory(event) {
+      async function addCategory(event) {
         event.preventDefault();
         if (!currentUser || currentUser.role !== "admin") {
           showToast("Bạn không có quyền thêm danh mục!");
@@ -1858,7 +1825,7 @@
           return;
         }
         categories.push(category);
-        saveCategories();
+        await updateGitHubData();
         updateCategoryDropdown();
         renderAdminCategories();
         renderMenu();
@@ -1883,7 +1850,7 @@
         });
       }
 
-      function editCategory(oldCategory) {
+      async function editCategory(oldCategory) {
         if (!currentUser || currentUser.role !== "admin") {
           showToast("Bạn không có quyền sửa danh mục!");
           return;
@@ -1897,11 +1864,9 @@
           const index = categories.indexOf(oldCategory);
           categories[index] = newCategory;
           products.forEach((product) => {
-            if (product.category === oldCategory)
-              product.category = newCategory;
+            if (product.category === oldCategory) product.category = newCategory;
           });
-          saveCategories();
-          saveProducts();
+          await updateGitHubData();
           updateCategoryDropdown();
           renderAdminCategories();
           renderMenu();
@@ -1910,7 +1875,7 @@
         }
       }
 
-      function deleteCategory(category) {
+      async function deleteCategory(category) {
         if (!currentUser || currentUser.role !== "admin") {
           showToast("Bạn không có quyền xóa danh mục!");
           return;
@@ -1922,7 +1887,7 @@
         }
         if (confirm("Bạn có chắc muốn xóa danh mục này?")) {
           categories = categories.filter((c) => c !== category);
-          saveCategories();
+          await updateGitHubData();
           updateCategoryDropdown();
           renderAdminCategories();
           renderMenu();
